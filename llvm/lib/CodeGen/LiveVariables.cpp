@@ -222,8 +222,8 @@ MachineInstr *LiveVariables::FindLastPartialDef(Register Reg) {
     if (!Def)
       continue;
     unsigned Dist = DistanceMap[Def];
-    if (Dist > LastDefDist) {
-      LastDef     = Def;
+    if (!LastDef || Dist > LastDefDist) {
+      LastDef = Def;
       LastDefDist = Dist;
     }
   }
