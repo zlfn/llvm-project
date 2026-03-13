@@ -254,6 +254,15 @@ void LiveVariables::HandlePhysRegUse(Register Reg, MachineInstr &MI) {
     if (LastPartialDef) {
       LastPartialDef->addOperand(
           MachineOperand::CreateReg(Reg, /*IsDef=*/true, /*IsImp=*/true));
+      // Add implicit uses for sub-registers that were defined by earlier
+      // instructions. Without these, later passes (e.g. MachineCopyPropagation)
+      // may think the earlier definitions are dead.
+      for (MCPhysReg SubReg : TRI->subregs(Reg)) {
+        if (PhysRegDef[SubReg] && PhysRegDef[SubReg] != LastPartialDef)
+          LastPartialDef->addOperand(MachineOperand::CreateReg(SubReg,
+                                                               /*IsDef=*/false,
+                                                               /*IsImp=*/true));
+      }
     }
   } else if (LastDef && !PhysRegUse[Reg.id()] &&
              !LastDef->findRegisterDefOperand(Reg, /*TRI=*/nullptr))
