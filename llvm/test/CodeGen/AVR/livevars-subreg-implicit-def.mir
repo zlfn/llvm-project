@@ -1,0 +1,34 @@
+# RUN: llc -mtriple=avr --run-pass=livevars,dead-mi-elimination -o - %s | FileCheck %s
+--- |
+  target triple = "avr--"
+  declare void @use()
+  define void @test_subreg_no_spurious_superreg_def() { ret void }
+...
+---
+# LiveVariables must not mark a sub-register def as killing the entire
+# super-register.  On AVR the two halves of every register pair are
+# independent — writing r24 does not clobber r25.
+#
+# Previously, LiveVariables incorrectly added implicit-def $r25r24 to
+# LDIRdK, which made DeadMachineInstrElim think $r25 = MOVRdRr is dead
+# and remove it.  The subsequent MOVRdRr of $r25 then reads an undefined
+# register — a miscompilation.
+#
+# See https://github.com/llvm/llvm-project/issues/156428
+name:            test_subreg_no_spurious_superreg_def
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r22
+
+    ; CHECK-LABEL: name: test_subreg_no_spurious_superreg_def
+    ; The MOVRdRr to $r25 must not be removed — $r20 needs its value.
+    ; CHECK: $r25 = MOVRdRr
+    ; CHECK: $r24 = LDIRdK 42
+    ; CHECK: $r20 = MOVRdRr $r25
+    $r25 = MOVRdRr $r22
+    $r24 = LDIRdK 42
+    $r20 = MOVRdRr $r25
+    RCALLk @use, implicit $r25r24, implicit $r20
+
+...
