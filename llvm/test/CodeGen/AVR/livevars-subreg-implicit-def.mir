@@ -1,7 +1,6 @@
 # RUN: llc -mtriple=avr --run-pass=livevars,dead-mi-elimination -o - %s | FileCheck %s
 --- |
   target triple = "avr--"
-  declare void @use()
   define void @test_subreg_no_spurious_superreg_def() { ret void }
 ...
 ---
@@ -29,6 +28,6 @@ body:             |
     $r25 = MOVRdRr $r22
     $r24 = LDIRdK 42
     $r20 = MOVRdRr $r25
-    RCALLk @use, implicit $r25r24, implicit $r20
+    INLINEASM &"", 1 /* sideeffect attdialect */, 9 /* reguse */, $r25r24, 9 /* reguse */, $r20
 
 ...
